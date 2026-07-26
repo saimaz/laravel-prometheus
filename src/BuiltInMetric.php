@@ -24,6 +24,15 @@ enum BuiltInMetric: string implements MetricDefinition
     case HORIZON_PROCESSES = 'horizon_current_processes';
     case HORIZON_QUEUE_WAIT_TIME = 'horizon_queue_wait_time_seconds';
 
+    /** Unix timestamp of the last finished scheduled task (any). Stale = scheduler dead. */
+    case SCHEDULER_HEARTBEAT = 'scheduler_heartbeat_timestamp';
+
+    /** Scheduled task runs. Labels: command, status (success|failure). */
+    case SCHEDULER_RUNS = 'scheduler_runs_total';
+
+    /** Scheduled task duration in seconds. Label: command. */
+    case SCHEDULER_DURATION = 'scheduler_duration_seconds';
+
     public function helpText(): string
     {
         return match ($this) {
@@ -37,6 +46,9 @@ enum BuiltInMetric: string implements MetricDefinition
             self::HORIZON_WORKLOAD => 'Current queue workload',
             self::HORIZON_PROCESSES => 'Current processes per queue',
             self::HORIZON_QUEUE_WAIT_TIME => 'Queue wait time in seconds',
+            self::SCHEDULER_HEARTBEAT => 'Unix timestamp of last finished scheduled task',
+            self::SCHEDULER_RUNS => 'Total scheduled task runs by command and status',
+            self::SCHEDULER_DURATION => 'Scheduled task duration in seconds',
         };
     }
 
@@ -45,6 +57,8 @@ enum BuiltInMetric: string implements MetricDefinition
         return match ($this) {
             self::HTTP_REQUESTS, self::HTTP_REQUEST_DURATION => ['route', 'method', 'status'],
             self::HORIZON_WORKLOAD, self::HORIZON_PROCESSES, self::HORIZON_QUEUE_WAIT_TIME => ['queue'],
+            self::SCHEDULER_RUNS => ['command', 'status'],
+            self::SCHEDULER_DURATION => ['command'],
             default => [],
         };
     }
@@ -53,6 +67,7 @@ enum BuiltInMetric: string implements MetricDefinition
     {
         return match ($this) {
             self::HTTP_REQUEST_DURATION => null, // Configured via config('prometheus.http.duration_buckets')
+            self::SCHEDULER_DURATION => [0.1, 0.5, 1, 5, 15, 30, 60, 120, 300, 600],
             default => null,
         };
     }

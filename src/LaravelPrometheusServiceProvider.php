@@ -4,7 +4,11 @@ declare(strict_types=1);
 
 namespace Ninebit\LaravelPrometheus;
 
+use Illuminate\Console\Events\ScheduledTaskFailed;
+use Illuminate\Console\Events\ScheduledTaskFinished;
+use Illuminate\Console\Events\ScheduledTaskStarting;
 use Illuminate\Contracts\Http\Kernel;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis as LaravelRedis;
 use Illuminate\Support\ServiceProvider;
@@ -12,6 +16,7 @@ use Laravel\Horizon\Horizon;
 use Ninebit\LaravelPrometheus\Collectors\HorizonCollector;
 use Ninebit\LaravelPrometheus\Contracts\HttpLabelProvider;
 use Ninebit\LaravelPrometheus\Contracts\MetricsRegistryInterface;
+use Ninebit\LaravelPrometheus\Listeners\RecordScheduledTaskMetrics;
 use Ninebit\LaravelPrometheus\Middleware\HttpMetricsMiddleware;
 use Prometheus\CollectorRegistry;
 use Prometheus\Storage\Adapter;
@@ -49,6 +54,7 @@ class LaravelPrometheusServiceProvider extends ServiceProvider
         $this->loadRoutesFrom(__DIR__.'/../routes/metrics.php');
         $this->registerHttpMiddleware();
         $this->autoRegisterCollectors();
+        $this->registerSchedulerMetrics();
     }
 
     private function registerHttpMiddleware(): void
@@ -71,6 +77,17 @@ class LaravelPrometheusServiceProvider extends ServiceProvider
             $collectors[] = HorizonCollector::class;
             config()->set('prometheus.collectors', $collectors);
         }
+    }
+
+    private function registerSchedulerMetrics(): void
+    {
+        if (! config('prometheus.enabled') || $this->app->environment('testing')) {
+            return;
+        }
+
+        Event::listen(ScheduledTaskStarting::class, [RecordScheduledTaskMetrics::class, 'handleStarting']);
+        Event::listen(ScheduledTaskFinished::class, [RecordScheduledTaskMetrics::class, 'handleFinished']);
+        Event::listen(ScheduledTaskFailed::class, [RecordScheduledTaskMetrics::class, 'handleFailed']);
     }
 
     private function buildStorageAdapter(): Adapter

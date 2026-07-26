@@ -103,6 +103,20 @@ Auto-detected when `laravel/horizon` is installed. No configuration needed.
 | `{ns}_horizon_current_processes` | Gauge | `queue` |
 | `{ns}_horizon_queue_wait_time_seconds` | Gauge | `queue` |
 
+Horizon metrics are scraped from the **web** `/metrics` endpoint (Redis-backed). The Horizon worker process does not need its own HTTP scrape.
+
+### Scheduler metrics (automatic)
+
+Listens to `ScheduledTaskStarting` / `Finished` / `Failed` when `PROMETHEUS_ENABLED=true`.
+
+| Metric | Type | Labels |
+|--------|------|--------|
+| `{ns}_scheduler_heartbeat_timestamp` | Gauge | — (unix time of last finished task) |
+| `{ns}_scheduler_runs_total` | Counter | `command`, `status` (`success` / `failure`) |
+| `{ns}_scheduler_duration_seconds` | Histogram | `command` |
+
+The `schedule:work` container and the web app must share Redis (default) so the web scrape sees scheduler series. Alert when `time() - scheduler_heartbeat_timestamp` is large (scheduler silent).
+
 ## Custom metrics
 
 ### 1. Define a metric enum
