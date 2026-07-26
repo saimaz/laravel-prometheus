@@ -62,8 +62,8 @@ class HttpMetricsMiddleware
     {
         $route = $request->route();
 
-        if ($route?->getName()) {
-            return $route->getName();
+        if ($name = $this->stableRouteName($request)) {
+            return $name;
         }
 
         // Use URI pattern instead of actual path to prevent cardinality explosion
@@ -75,9 +75,29 @@ class HttpMetricsMiddleware
         return 'unnamed';
     }
 
+    /**
+     * Route name, or null when the route has no name a human would recognise.
+     *
+     * Laravel auto-names unnamed routes via AbstractRouteCollection as
+     * "generated::{Str::random()}". That value is re-rolled on every boot, so
+     * using it as a label makes the series unreadable and leaks cardinality —
+     * a new set of series on every deploy. Treat it as "no name" and let the
+     * caller fall back to the stable URI pattern.
+     */
+    private function stableRouteName(Request $request): ?string
+    {
+        $name = $request->route()?->getName();
+
+        if ($name === null || $name === '' || str_starts_with($name, 'generated::')) {
+            return null;
+        }
+
+        return $name;
+    }
+
     private function shouldIgnore(Request $request): bool
     {
-        $routeName = $request->route()?->getName() ?? '';
+        $routeName = $this->stableRouteName($request) ?? '';
         $path = trim($request->getPathInfo(), '/');
         $ignoredRoutes = config('prometheus.http.ignored_routes', []);
 

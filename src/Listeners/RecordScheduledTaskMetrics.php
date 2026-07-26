@@ -78,18 +78,27 @@ class RecordScheduledTaskMetrics
     /**
      * Bounded label: prefer Artisan command name, else a short description.
      * Never use full argv with unique args (cardinality).
+     *
+     * Laravel builds the command via Application::formatCommandString(), which
+     * runs the php and artisan paths through ProcessUtils::escapeArgument() —
+     * on Unix that single-quotes them, e.g.
+     * "'/usr/bin/php' 'artisan' queue:work --tries=3". Quotes must therefore be
+     * tolerated around both "artisan" and the command name, otherwise every
+     * task collapses onto the basename of the PHP binary ("php'").
      */
     private function commandLabel(Event $task): string
     {
         $command = $task->command ?? null;
 
         if (is_string($command) && $command !== '') {
-            // "php artisan foo:bar --opt" → "foo:bar"
-            if (preg_match('/artisan\s+([^\s]+)/', $command, $m)) {
+            // "'/usr/bin/php' 'artisan' foo:bar --opt" → "foo:bar"
+            if (preg_match('/artisan[\'"]?\s+[\'"]?([^\s\'"]+)/', $command, $m)) {
                 return $this->truncate($m[1]);
             }
 
-            return $this->truncate(basename(strtok($command, ' ') ?: $command));
+            $first = strtok($command, ' ') ?: $command;
+
+            return $this->truncate(basename(trim($first, '\'"')));
         }
 
         if (is_string($task->description) && $task->description !== '') {
