@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Redis as LaravelRedis;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Horizon\Horizon;
 use Ninebit\LaravelPrometheus\Collectors\HorizonCollector;
+use Ninebit\LaravelPrometheus\Console\PruneLabelsCommand;
 use Ninebit\LaravelPrometheus\Contracts\HttpLabelProvider;
 use Ninebit\LaravelPrometheus\Contracts\MetricsRegistryInterface;
 use Ninebit\LaravelPrometheus\Listeners\RecordScheduledTaskMetrics;
@@ -49,6 +50,10 @@ class LaravelPrometheusServiceProvider extends ServiceProvider
             $this->publishes([
                 __DIR__.'/../config/prometheus.php' => config_path('prometheus.php'),
             ], 'prometheus-config');
+
+            $this->commands([
+                PruneLabelsCommand::class,
+            ]);
         }
 
         $this->loadRoutesFrom(__DIR__.'/../routes/metrics.php');

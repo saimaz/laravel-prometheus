@@ -2,6 +2,23 @@
 
 All notable changes to `laravel-prometheus` will be documented in this file.
 
+## 2.3.0 - 2026-07-28
+
+### Added
+
+- **`prometheus:prune-labels --match='<glob>'`** — deletes stored series whose
+  label values match a glob, with `--dry-run` to preview. Redis retains every
+  series it has ever seen and re-exports it on each scrape, so the 2.2.0 label
+  fixes stop new junk but cannot clear what is already stored. Pruning is
+  surgical: only matching series are removed, so unrelated gauges (import
+  freshness, MRR) that are refreshed only by an infrequent job keep their
+  values — unlike a full storage wipe. Requires the `redis` driver.
+
+### Changed
+
+- CI now runs a Redis service, and the prune suite fails instead of skipping
+  when Redis is unreachable under `CI=true`.
+
 ## 2.2.0 - 2026-07-27
 
 Two label-quality fixes. Both change the label **values** you already have in

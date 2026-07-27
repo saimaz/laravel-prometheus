@@ -17,6 +17,20 @@ jobs:
 
     name: PHP ${{ matrix.php }} - Laravel ${{ matrix.laravel }}
 
+    # PruneLabelsCommandTest talks to a real Redis on 6399 and skips itself when
+    # none is reachable — without this service the prune suite would silently
+    # stop running instead of failing.
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6399:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
     steps:
       - uses: actions/checkout@v7
 

@@ -78,7 +78,7 @@ Registered as global middleware — no setup needed.
 | `{ns}_http_requests_total` | Counter | `route`, `method`, `status` |
 | `{ns}_http_request_duration_seconds` | Histogram | `route`, `method`, `status` |
 
-Routes are identified by name (e.g. `api.users.index`) or URI pattern (e.g. `api/users/{user}`) to prevent label cardinality explosion.
+Routes are identified by name (e.g. `api.users.index`) or URI pattern (e.g. `api/users/{user}`) to prevent label cardinality explosion. Laravel's own `generated::{random}` names — assigned to unnamed routes by `route:cache` and re-rolled on every build — are treated as unnamed so they never reach a label.
 
 **Ignoring routes** — by default, `metrics` and `horizon.*` are ignored. Customize in config:
 
@@ -116,6 +116,26 @@ Listens to `ScheduledTaskStarting` / `Finished` / `Failed` when `PROMETHEUS_ENAB
 | `{ns}_scheduler_duration_seconds` | Histogram | `command` |
 
 The `schedule:work` container and the web app must share Redis (default) so the web scrape sees scheduler series. Alert when `time() - scheduler_heartbeat_timestamp` is large (scheduler silent).
+
+## Pruning stale series
+
+Redis keeps every series it has ever stored, so it is re-exported on each scrape
+forever. Fixing a bad label stops new junk but never clears what is already
+there — use `prometheus:prune-labels` for that.
+
+```bash
+# Always look first: nothing is written on a dry run.
+php artisan prometheus:prune-labels --match='generated::*' --dry-run
+
+php artisan prometheus:prune-labels --match='generated::*'
+```
+
+The glob is tested against **every label value** of each stored series, so it
+matches on any label position. `--match` is repeatable. Only series that match
+are removed: unrelated counters, gauges, and histograms keep their values, which
+matters for gauges that are only refreshed by an infrequent job.
+
+Requires the `redis` storage driver; the command refuses to run on any other.
 
 ## Custom metrics
 
